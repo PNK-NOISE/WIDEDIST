@@ -1,5 +1,7 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include <cmath>
+#include <algorithm>
 
 TapeDistAudioProcessor::TapeDistAudioProcessor()
 #ifndef JucePlugin_PreferredChannelConfigurations
