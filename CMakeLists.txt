@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.24)
 
 set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "Build architectures for macOS" FORCE)
 
-project(TapeDist VERSION 1.0.0)
+project(WIDEDIST VERSION 1.0.0)
 
 # Build Universal Binary for macOS (Apple Silicon + Intel)
 if(APPLE)
@@ -19,7 +19,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(juce)
 
 # Create the plugin target
-juce_add_plugin(TapeDist
+juce_add_plugin(WIDEDIST
     PLUGIN_NAME "WIDEDIST"
     COMPANY_NAME "PNK NOISE"
     BUNDLE_ID "com.pnknoise.widedist"
@@ -36,9 +36,9 @@ juce_add_plugin(TapeDist
     FORMATS Standalone VST3 AU
 )
 
-juce_generate_juce_header(TapeDist)
+juce_generate_juce_header(WIDEDIST)
 
-target_sources(TapeDist
+target_sources(WIDEDIST
     PRIVATE
         Source/PluginProcessor.cpp
         Source/PluginEditor.cpp
@@ -53,7 +53,7 @@ juce_add_binary_data(WebAssets
         LOGGA.png
 )
 
-target_compile_definitions(TapeDist
+target_compile_definitions(WIDEDIST
     PUBLIC
         JUCE_WEB_BROWSER=1
         JUCE_USE_WIN_WEBVIEW2=1
@@ -62,7 +62,7 @@ target_compile_definitions(TapeDist
 )
 
 # Link everything together, and enable the dsp module
-target_link_libraries(TapeDist
+target_link_libraries(WIDEDIST
     PRIVATE
         juce::juce_audio_utils
         juce::juce_dsp
