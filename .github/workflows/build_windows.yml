@@ -22,9 +22,7 @@ jobs:
       run: cmake --build build --config Release
 
     - name: Compile Inno Setup Installer
-      uses: minicomp/iscc-action@v3
-      with:
-        iscc-script: installer.iss
+      run: iscc installer.iss
 
     - name: Upload Installer Artifact
       uses: actions/upload-artifact@v4
