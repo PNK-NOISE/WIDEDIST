@@ -1,5 +1,6 @@
 #pragma once
 #include <JuceHeader.h>
+#include "PresetManager.h"
 
 class TapeDistAudioProcessor  : public juce::AudioProcessor
 {
@@ -42,6 +43,9 @@ public:
     // Live UI Meters
     std::atomic<float> currentBassGR { 0.0f };
     std::atomic<float> currentMasterGR { 0.0f };
+    
+    // Preset Manager
+    std::unique_ptr<PresetManager> presetManager;
 
 private:
     std::atomic<float>* driveParam = nullptr;
@@ -59,11 +63,15 @@ private:
     std::atomic<float>* bassFxTypeParam = nullptr;
     std::atomic<float>* bassAmountParam = nullptr;
     std::atomic<float>* bassGainParam = nullptr;
+    std::atomic<float>* bassOnParam = nullptr;
     
     // Stage 3: Compressor
     std::atomic<float>* peakReductionParam = nullptr;
     std::atomic<float>* compGainParam = nullptr;
     std::atomic<float>* compOnParam = nullptr;
+    std::atomic<float>* finalSatParam = nullptr;
+    std::atomic<float>* masterMixParam = nullptr;
+    std::atomic<float>* masterSoftClipParam = nullptr;
 
     double currentSampleRate = 44100.0;
     
@@ -81,6 +89,10 @@ private:
     // Compressor Envelopes
     float bassCompEnvelope = 0.0f;
     float compEnvelope = 0.0f;
+    
+    // Glitch State
+    
+
     
     void updateParameters();
 

@@ -1,9 +1,9 @@
 #pragma once
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
+#include "WebAssets.h"
 
-class TapeDistAudioProcessorEditor  : public juce::AudioProcessorEditor,
-                                      public juce::Timer
+class TapeDistAudioProcessorEditor  : public juce::AudioProcessorEditor, public juce::Timer
 {
 public:
     TapeDistAudioProcessorEditor (TapeDistAudioProcessor&);
@@ -12,55 +12,66 @@ public:
     void paint (juce::Graphics&) override;
     void resized() override;
     
+    std::optional<juce::WebBrowserComponent::Resource> getResource(const juce::String& url);
     void timerCallback() override;
 
 private:
     TapeDistAudioProcessor& audioProcessor;
     
-    juce::Slider driveSlider;
-    juce::ComboBox distTypeComboBox;
-    juce::Slider mixSlider;
-    juce::Slider outputSlider;
+    // Web Relays
+    juce::WebSliderRelay driveRelay { "drive" };
+    juce::WebComboBoxRelay distTypeRelay { "distType" };
+    juce::WebSliderRelay mixRelay { "mix" };
+    juce::WebSliderRelay outputRelay { "output" };
+    juce::WebToggleButtonRelay distOnRelay { "distOn" };
+    juce::WebToggleButtonRelay ampSimRelay { "ampSim" };
     
-    juce::Slider crossoverSlider;
-    juce::Slider widthSlider;
-    juce::Slider wideGainSlider;
+    juce::WebSliderRelay crossoverRelay { "crossover" };
+    juce::WebSliderRelay widthRelay { "width" };
+    juce::WebSliderRelay wideGainRelay { "wideGain" };
+    juce::WebToggleButtonRelay wideOnRelay { "wideOn" };
     
-    juce::ComboBox bassFxTypeComboBox;
-    juce::Slider bassAmountSlider;
-    juce::Slider bassGainSlider;
+    juce::WebComboBoxRelay bassFxTypeRelay { "bassFxType" };
+    juce::WebSliderRelay bassAmountRelay { "bassAmount" };
+    juce::WebSliderRelay bassGainRelay { "bassGain" };
+    juce::WebToggleButtonRelay bassOnRelay { "bassOn" };
     
-    juce::Slider peakReductionSlider;
-    juce::Slider compGainSlider;
+    juce::WebSliderRelay peakReductionRelay { "peakReduction" };
+    juce::WebSliderRelay compGainRelay { "compGain" };
+    juce::WebSliderRelay finalSatRelay { "finalSat" };
+    juce::WebToggleButtonRelay compOnRelay { "compOn" };
     
-    juce::ToggleButton distOnButton { "On" };
-    juce::ToggleButton ampSimButton { "Amp Sim (Cab)" };
-    juce::ToggleButton wideOnButton { "On" };
-    juce::ToggleButton compOnButton { "On" };
+    juce::WebSliderRelay masterMixRelay { "masterMix" };
+    juce::WebToggleButtonRelay masterSoftClipRelay { "masterSoftClip" };
     
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> driveAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> distTypeAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mixAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> outputAttachment;
+    // APVTS Attachments
+    juce::WebSliderParameterAttachment driveAttachment;
+    juce::WebComboBoxParameterAttachment distTypeAttachment;
+    juce::WebSliderParameterAttachment mixAttachment;
+    juce::WebSliderParameterAttachment outputAttachment;
+    juce::WebToggleButtonParameterAttachment distOnAttachment;
+    juce::WebToggleButtonParameterAttachment ampSimAttachment;
     
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> crossoverAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> widthAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> wideGainAttachment;
+    juce::WebSliderParameterAttachment crossoverAttachment;
+    juce::WebSliderParameterAttachment widthAttachment;
+    juce::WebSliderParameterAttachment wideGainAttachment;
+    juce::WebToggleButtonParameterAttachment wideOnAttachment;
     
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> bassFxTypeAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> bassAmountAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> bassGainAttachment;
+    juce::WebComboBoxParameterAttachment bassFxTypeAttachment;
+    juce::WebSliderParameterAttachment bassAmountAttachment;
+    juce::WebSliderParameterAttachment bassGainAttachment;
+    juce::WebToggleButtonParameterAttachment bassOnAttachment;
     
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> peakReductionAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> compGainAttachment;
+    juce::WebSliderParameterAttachment peakReductionAttachment;
+    juce::WebSliderParameterAttachment compGainAttachment;
+    juce::WebSliderParameterAttachment finalSatAttachment;
+    juce::WebToggleButtonParameterAttachment compOnAttachment;
     
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> distOnAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> ampSimAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> wideOnAttachment;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> compOnAttachment;
+    juce::WebSliderParameterAttachment masterMixAttachment;
+    juce::WebToggleButtonParameterAttachment masterSoftClipAttachment;
     
-    // Quick helper factory method
-    void setupSlider(juce::Slider& slider, std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>& attachment, const juce::String& paramID);
+    // The Web Browser
+    juce::WebBrowserComponent webBrowser;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TapeDistAudioProcessorEditor)
 };

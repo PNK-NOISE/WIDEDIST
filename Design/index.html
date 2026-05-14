@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WIDEDIST</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #ffabfe;
+      --primary-glow: rgba(255, 171, 254, 0.9);
+      --bg-chassis: #e4e7ec;
+      --panel-bg: #eceff4;
+      --shadow-light: #ffffff;
+      --shadow-dark: #c2c9d6;
+      --text-main: #333740;
+      --text-muted: #7A808C;
+      --knob-bg: linear-gradient(135deg, #ffffff, #d0d6e0);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      background: var(--bg-chassis);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    .texture-overlay {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 10;
+      border-radius: inherit;
+    }
+
+    .plugin-window {
+      width: 100vw;
+      height: 100vh;
+      background: var(--bg-chassis);
+      padding: 20px 30px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      position: relative;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 100;
+      margin-bottom: -10px;
+      position: relative;
+    }
+    
+    .brand-logo {
+      height: 38px;
+      object-fit: contain;
+      filter: drop-shadow(1px 2px 2px rgba(0,0,0,0.05));
+      z-index: 100;
+    }
+
+    .header-controls {
+      display: flex;
+      gap: 20px;
+      margin-left: auto;
+      align-items: center;
+    }
+    
+    .preset-ui {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    
+    .preset-selector {
+      background: transparent;
+      border: none;
+      font-family: 'Inter', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-main);
+      padding: 8px 16px;
+      border-radius: 8px;
+      box-shadow: 
+        inset 3px 3px 6px var(--shadow-dark),
+        inset -3px -3px 6px var(--shadow-light);
+      outline: none;
+      cursor: pointer;
+      appearance: none;
+      width: 140px;
+      text-align: center;
+    }
+
+    .preset-save-btn {
+      font-family: 'Inter', sans-serif;
+      font-size: 10px;
+      font-weight: 800;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      padding: 8px 14px;
+      border-radius: 8px;
+      background: var(--panel-bg);
+      border: none;
+      box-shadow: 
+        -3px -3px 6px var(--shadow-light),
+        3px 3px 6px var(--shadow-dark);
+      cursor: pointer;
+      transition: all 0.1s;
+    }
+
+    .preset-save-btn:active {
+      box-shadow: 
+        inset 3px 3px 6px var(--shadow-dark),
+        inset -3px -3px 6px var(--shadow-light);
+    }
+
+    .panels-container {
+      display: flex;
+      gap: 30px;
+      flex: 1;
+      z-index: 2;
+    }
+
+    .panel {
+      flex: 1;
+      background: var(--panel-bg);
+      border-radius: 20px;
+      padding: 20px 20px 25px 20px;
+      box-shadow: 
+        -10px -10px 20px var(--shadow-light),
+        10px 10px 20px var(--shadow-dark);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+    }
+
+    .panel-header {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 12px;
+      margin-bottom: 30px;
+      border-bottom: 2px solid var(--shadow-light);
+      box-shadow: 0 2px 0 rgba(0,0,0,0.03);
+    }
+
+    .panel-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--text-muted);
+      letter-spacing: 3px;
+      text-transform: uppercase;
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 35px 20px;
+      width: 100%;
+      justify-items: center;
+      flex: 1;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .control-group.horizontal {
+      flex-direction: row;
+      gap: 10px;
+    }
+
+    .knob-container {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      position: relative;
+      background: var(--panel-bg);
+      box-shadow: 
+        inset 5px 5px 10px var(--shadow-dark), 
+        inset -5px -5px 10px var(--shadow-light);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .knob-container.small {
+      width: 50px;
+      height: 50px;
+      box-shadow: 
+        inset 3px 3px 6px var(--shadow-dark), 
+        inset -3px -3px 6px var(--shadow-light);
+    }
+
+    .knob-container.small .knob-arc {
+      width: 46px;
+      height: 46px;
+      mask: radial-gradient(transparent 20px, black 21px);
+      -webkit-mask: radial-gradient(transparent 20px, black 21px);
+    }
+
+    .knob-container.small .knob {
+      width: 32px;
+      height: 32px;
+      border-width: 4px;
+    }
+
+    .knob-arc {
+      position: absolute;
+      width: 66px;
+      height: 66px;
+      border-radius: 50%;
+      mask: radial-gradient(transparent 30px, black 31px);
+      -webkit-mask: radial-gradient(transparent 30px, black 31px);
+      opacity: 0.9;
+    }
+    
+    .knob-container.small .knob-arc {
+      width: 46px;
+      height: 46px;
+      mask: radial-gradient(transparent 21px, black 22px);
+      -webkit-mask: radial-gradient(transparent 21px, black 22px);
+    }
+
+    .knob {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: var(--knob-bg);
+      box-shadow: 
+        0 4px 6px rgba(0,0,0,0.15), 
+        inset 0 2px 4px rgba(255,255,255,1),
+        inset 0 -2px 4px rgba(0,0,0,0.05);
+      position: relative;
+      cursor: ns-resize;
+      transform: rotate(-135deg);
+      display: flex;
+      justify-content: center;
+    }
+    
+    .knob-container.small .knob {
+      width: 36px;
+      height: 36px;
+    }
+
+    .knob-indicator {
+      position: absolute;
+      top: 6px;
+      width: 4px;
+      height: 14px;
+      background: var(--primary);
+      border-radius: 2px;
+      box-shadow: 0 0 6px var(--primary-glow);
+    }
+    
+    .knob-container.small .knob-indicator {
+      top: 4px;
+      width: 3px;
+      height: 10px;
+    }
+
+    .control-label {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+    }
+
+    .control-value {
+      font-size: 10px;
+      color: var(--text-main);
+      background: rgba(255,255,255,0.6);
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-family: monospace;
+      font-weight: 800;
+      box-shadow: inset 1px 1px 3px rgba(0,0,0,0.1), 0 1px 0 rgba(255,255,255,0.5);
+    }
+
+    .btn {
+      width: 42px;
+      height: 24px;
+      border-radius: 12px;
+      background: var(--panel-bg);
+      box-shadow: 
+        -3px -3px 6px var(--shadow-light),
+        3px 3px 6px var(--shadow-dark);
+      cursor: pointer;
+      position: relative;
+      display: flex;
+      align-items: center;
+      transition: all 0.1s;
+    }
+
+    .btn.active {
+      box-shadow: 
+        inset 3px 3px 6px var(--shadow-dark),
+        inset -3px -3px 6px var(--shadow-light);
+    }
+
+    .btn-led {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #ccd0d9;
+      margin-left: 7px;
+      box-shadow: inset 1px 1px 2px rgba(0,0,0,0.2);
+      transition: all 0.2s;
+    }
+
+    .btn.active .btn-led {
+      background: var(--primary);
+      box-shadow: 0 0 10px var(--primary-glow), inset 0 1px 2px rgba(255,255,255,0.6);
+    }
+
+    .slider-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      height: 100%;
+    }
+
+    .slider-track {
+      width: 14px;
+      height: 140px;
+      background: var(--panel-bg);
+      border-radius: 7px;
+      box-shadow: 
+        inset 4px 4px 8px var(--shadow-dark), 
+        inset -4px -4px 8px var(--shadow-light);
+      position: relative;
+      display: flex;
+      justify-content: center;
+    }
+
+    .slider-cap {
+      width: 32px;
+      height: 20px;
+      background: var(--panel-bg);
+      border-radius: 10px;
+      position: absolute;
+      bottom: 50%;
+      transform: translateY(50%);
+      box-shadow: 
+        -2px -2px 5px var(--shadow-light),
+        2px 2px 5px var(--shadow-dark);
+      cursor: ns-resize;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .slider-cap::after {
+      content: '';
+      width: 14px;
+      height: 4px;
+      background: var(--primary);
+      border-radius: 2px;
+      box-shadow: 0 0 6px var(--primary-glow);
+    }
+
+    .meter {
+      width: 12px;
+      height: 120px;
+      background: var(--panel-bg);
+      border-radius: 6px;
+      box-shadow: 
+        inset 3px 3px 6px var(--shadow-dark),
+        inset -2px -2px 4px var(--shadow-light);
+      position: relative;
+      overflow: hidden;
+      margin-top: 5px;
+    }
+    
+    .meter-fill {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 0%;
+      background: linear-gradient(to top, var(--primary), #FF2222);
+      box-shadow: 0 0 15px var(--primary-glow);
+      transition: height 0.1s ease-out;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Custom Prompt Modal -->
+<div id="presetModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.6); z-index:9999; justify-content:center; align-items:center;">
+  <div style="background:var(--panel-bg); padding:24px; border-radius:12px; display:flex; flex-direction:column; gap:15px; width:300px; box-shadow:0 10px 30px rgba(0,0,0,0.5);">
+    <div style="font-weight:800; font-size:14px; color:var(--text-main); text-transform:uppercase; letter-spacing:1px;">Save Preset</div>
+    <input type="text" id="presetNameInput" style="padding:10px; border-radius:6px; border:none; box-shadow:inset 2px 2px 5px var(--shadow-dark), inset -2px -2px 5px var(--shadow-light); background:var(--bg-chassis); color:var(--text-main); font-family:'Inter', sans-serif; font-size:14px; outline:none;" placeholder="Preset Name">
+    <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:5px;">
+      <button onclick="document.getElementById('presetModal').style.display='none'; if(isJuce) callJuce('setKeyboardFocus', [false]);" style="padding:8px 16px; border-radius:6px; background:var(--bg-chassis); color:var(--text-main); border:none; font-family:'Inter', sans-serif; font-weight:600; cursor:pointer; box-shadow:inset 2px 2px 5px var(--shadow-dark), inset -2px -2px 5px var(--shadow-light);">Cancel</button>
+      <button onclick="submitPresetSave()" style="padding:8px 16px; border-radius:6px; background:var(--primary); color:#000; border:none; font-family:'Inter', sans-serif; font-weight:800; cursor:pointer; box-shadow:0 0 10px var(--primary-glow);">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="plugin-window">
+  <div class="texture-overlay"></div>
+  
+  <div class="header">
+    <img src="LOGGA.png" alt="WIDEDIST" class="brand-logo" onerror="this.outerHTML='<h1 style=\'margin:0; font-size:24px; letter-spacing:4px; font-weight:800; text-shadow:2px 2px 4px rgba(0,0,0,0.1);\'>WIDEDIST</h1>'">
+    
+    <div class="header-controls">
+      <div class="control-group horizontal">
+        <div class="control-label">Master Mix</div>
+        <div class="knob-container small" data-id="masterMix" data-val="1.0" data-format="%">
+          <div class="knob-arc"></div>
+          <div class="knob"><div class="knob-indicator"></div></div>
+        </div>
+        <div class="control-value" style="width:40px; text-align:center;">100%</div>
+      </div>
+      <div class="control-group horizontal" style="margin-left: 10px;">
+        <div class="btn" data-id="masterSoftClip" onclick="toggleButton(this)" style="transform: scale(0.8);"><div class="btn-led"></div></div>
+        <div class="control-label">Soft Clip</div>
+      </div>
+
+      <div class="preset-ui">
+        <select class="preset-selector" id="presetSelector" onchange="loadPreset()">
+          <option>Init Preset</option>
+        </select>
+        <button class="preset-save-btn" onclick="savePreset()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="panels-container">
+    
+    <!-- PANEL 1: TAPE DISTORTION -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Dist</div>
+        <div class="btn active" data-id="distOn" onclick="toggleButton(this)"><div class="btn-led"></div></div>
+      </div>
+      <div class="controls-grid">
+        <div class="control-group" style="grid-column: span 2; margin-bottom: 5px;">
+          <div class="control-label" style="margin-bottom: 5px;">Type</div>
+          <select class="preset-selector" data-id="distType" onchange="emitJuceComboBox('distType', this.selectedIndex, 4)" style="width: 100%;">
+            <option>Tape</option>
+            <option>Tube</option>
+            <option>Hard Clip</option>
+            <option>Foldback</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <div class="knob-container" data-id="drive" data-val="0.0" data-format="dB" data-min="0" data-max="60">
+            <div class="knob-arc"></div>
+            <div class="knob"><div class="knob-indicator"></div></div>
+          </div>
+          <div class="control-label">Drive</div>
+          <div class="control-value">0 dB</div>
+        </div>
+        <div class="control-group">
+          <div class="knob-container" data-id="mix" data-val="1.0" data-format="%">
+            <div class="knob-arc"></div>
+            <div class="knob"><div class="knob-indicator"></div></div>
+          </div>
+          <div class="control-label">Mix</div>
+          <div class="control-value">100%</div>
+        </div>
+        <div class="control-group" style="justify-content: center; grid-column: span 2; margin-top: 5px;">
+          <div class="btn" data-id="ampSim" onclick="toggleButton(this)"><div class="btn-led"></div></div>
+          <div class="control-label">Amp Sim</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PANEL 2: WIDENESS -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Wideness</div>
+        <div class="btn active" data-id="wideOn" onclick="toggleButton(this)"><div class="btn-led"></div></div>
+      </div>
+      <div class="controls-grid">
+        <div class="slider-container" style="grid-row: span 1;">
+          <div class="slider-track" data-id="crossover" data-val="0.5" data-format="Hz" data-min="20" data-max="2000">
+            <div class="slider-cap" style="bottom: 50%;"></div>
+          </div>
+          <div class="control-label">X-Over</div>
+          <div class="control-value">250 Hz</div>
+        </div>
+        
+        <div style="display:flex; flex-direction:column; gap:15px; align-items:center;">
+          <div class="control-group">
+            <div class="knob-container" data-id="width" data-val="0.75" data-format="%" data-min="0" data-max="200">
+              <div class="knob-arc"></div>
+              <div class="knob"><div class="knob-indicator"></div></div>
+            </div>
+            <div class="control-label">Width</div>
+            <div class="control-value">150%</div>
+          </div>
+          <div class="control-group">
+            <div class="knob-container" data-id="wideGain" data-val="0.5" data-format="dB" data-min="-24" data-max="24">
+              <div class="knob-arc"></div>
+              <div class="knob"><div class="knob-indicator"></div></div>
+            </div>
+            <div class="control-label">Gain</div>
+            <div class="control-value">0.0 dB</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PANEL 3: BASS COMP -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Bass Comp</div>
+        <div class="btn active" data-id="bassOn" onclick="toggleButton(this)"><div class="btn-led"></div></div>
+      </div>
+      <div class="controls-grid">
+        <div class="control-group" style="grid-column: span 2;">
+          <select class="preset-selector" data-id="bassFxType" onchange="emitJuceComboBox('bassFxType', this.selectedIndex, 3)" style="width: 100%; margin-bottom: 5px;">
+            <option>Off</option>
+            <option>Compressor</option>
+            <option>Soft Clip</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <div class="knob-container" data-id="bassAmount" data-val="0.0" data-format="%">
+            <div class="knob-arc"></div>
+            <div class="knob"><div class="knob-indicator"></div></div>
+          </div>
+          <div class="control-label">Amount</div>
+          <div class="control-value">0%</div>
+        </div>
+        <div class="control-group">
+          <div class="knob-container" data-id="bassGain" data-val="0.5" data-format="dB" data-min="-24" data-max="24">
+            <div class="knob-arc"></div>
+            <div class="knob"><div class="knob-indicator"></div></div>
+          </div>
+          <div class="control-label">Bass Gain</div>
+          <div class="control-value">0.0 dB</div>
+        </div>
+        <div class="control-group" style="justify-content: center; grid-column: span 2;">
+           <div class="control-label" style="margin-bottom: 8px;">Gain Reduction</div>
+           <div class="meter"><div class="meter-fill" id="bassMeter" style="height: 0%;"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PANEL 4: MASTER COMP -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Master Glue</div>
+        <div class="btn active" data-id="compOn" onclick="toggleButton(this)"><div class="btn-led"></div></div>
+      </div>
+      <div class="controls-grid">
+        <div class="control-group">
+          <div class="knob-container" data-id="peakReduction" data-val="0.0" data-format="%">
+            <div class="knob-arc"></div>
+            <div class="knob"><div class="knob-indicator"></div></div>
+          </div>
+          <div class="control-label">Peak Red.</div>
+          <div class="control-value">0%</div>
+        </div>
+        <div class="control-group">
+          <div class="knob-container" data-id="finalSat" data-val="0.0" data-format="%">
+            <div class="knob-arc"></div>
+            <div class="knob"><div class="knob-indicator"></div></div>
+          </div>
+          <div class="control-label">Sat / Glue</div>
+          <div class="control-value">0%</div>
+        </div>
+        <div class="control-group">
+          <div class="knob-container" data-id="compGain" data-val="0.0" data-format="dB" data-min="0" data-max="24">
+            <div class="knob-arc"></div>
+            <div class="knob"><div class="knob-indicator"></div></div>
+          </div>
+          <div class="control-label">Makeup</div>
+          <div class="control-value">0.0 dB</div>
+        </div>
+        <div class="control-group">
+          <div class="knob-container" data-id="output" data-val="0.5" data-format="dB" data-min="-24" data-max="24">
+            <div class="knob-arc"></div>
+            <div class="knob"><div class="knob-indicator"></div></div>
+          </div>
+          <div class="control-label">Output</div>
+          <div class="control-value">0.0 dB</div>
+        </div>
+        <div class="control-group" style="justify-content: center; grid-column: span 2;">
+           <div class="control-label" style="margin-bottom: 8px;">Master GR</div>
+           <div class="meter"><div class="meter-fill" id="masterMeter" style="height: 0%;"></div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  // --------------------------------------------------------
+  // JUCE BINDINGS
+  // --------------------------------------------------------
+  const isJuce = typeof window.__JUCE__ !== 'undefined';
+
+  let _jucePromiseId = 0;
+  const _jucePromises = new Map();
+  if (isJuce) {
+    window.__JUCE__.backend.addEventListener("__juce__complete", ({ promiseId, result }) => {
+      if (_jucePromises.has(promiseId)) {
+        _jucePromises.get(promiseId).resolve(result);
+        _jucePromises.delete(promiseId);
+      }
+    });
+  }
+
+  function callJuce(name, params = []) {
+    if (!isJuce) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      const pid = _jucePromiseId++;
+      _jucePromises.set(pid, { resolve, reject });
+      window.__JUCE__.backend.emitEvent("__juce__invoke", {
+        name: name,
+        params: params,
+        resultId: pid
+      });
+    });
+  }
+
+  function emitJuceSlider(id, val) {
+    if (!isJuce) return;
+    const eventId = "__juce__slider" + id;
+    window.__JUCE__.backend.emitEvent(eventId, {
+      eventType: "valueChanged",
+      value: parseFloat(val)
+    });
+  }
+
+  function emitJuceComboBox(id, index, numItems) {
+    if (!isJuce) return;
+    const eventId = "__juce__comboBox" + id;
+    const val = numItems > 1 ? index / (numItems - 1) : 0.0;
+    window.__JUCE__.backend.emitEvent(eventId, {
+      eventType: "valueChanged",
+      value: parseFloat(val)
+    });
+  }
+
+  function emitJuceToggle(id, state) {
+    if (!isJuce) return;
+    const eventId = "__juce__toggle" + id;
+    window.__JUCE__.backend.emitEvent(eventId, {
+      eventType: "valueChanged",
+      value: state
+    });
+  }
+
+  // Set up listeners for changes coming FROM Juce
+  if (isJuce) {
+    document.querySelectorAll('[data-id]').forEach(el => {
+      const id = el.getAttribute('data-id');
+      const isKnob = el.classList.contains('knob-container');
+      const isSlider = el.classList.contains('slider-track');
+      const isBtn = el.classList.contains('btn');
+      
+      if (isKnob || isSlider) {
+        window.__JUCE__.backend.addEventListener("__juce__slider" + id, (e) => {
+          if (e.eventType === "valueChanged") {
+            let min = parseFloat(el.getAttribute('data-min') || '0');
+            let max = parseFloat(el.getAttribute('data-max') || '100');
+            
+            let normalized = 0;
+            if (el.getAttribute('data-format') === 'Hz') {
+              normalized = Math.log10(e.value / min) / Math.log10(max / min);
+            } else {
+              normalized = (e.value - min) / (max - min);
+            }
+            
+            el.setAttribute('data-val', normalized);
+            updateUIElement(el, normalized, e.value);
+          }
+        });
+        window.__JUCE__.backend.emitEvent("__juce__slider" + id, { eventType: "requestInitialUpdate" });
+      } else if (isBtn) {
+        window.__JUCE__.backend.addEventListener("__juce__toggle" + id, (e) => {
+          if (e.eventType === "valueChanged") {
+            if (e.value) el.classList.add('active');
+            else el.classList.remove('active');
+          }
+        });
+        window.__JUCE__.backend.emitEvent("__juce__toggle" + id, { eventType: "requestInitialUpdate" });
+      }
+    });
+    
+    document.querySelectorAll('select[data-id]').forEach(el => {
+      const id = el.getAttribute('data-id');
+      window.__JUCE__.backend.addEventListener("__juce__comboBox" + id, (e) => {
+        if (e.eventType === "valueChanged") {
+          const numItems = el.options.length;
+          let idx = Math.round(e.value * (numItems - 1));
+          el.selectedIndex = idx;
+        }
+      });
+      window.__JUCE__.backend.emitEvent("__juce__comboBox" + id, { eventType: "requestInitialUpdate" });
+    });
+    
+    window.__JUCE__.backend.addEventListener("meterData", (e) => {
+      let bassPct = Math.max(0, Math.min(100, (e.bass / -30.0) * 100));
+      let masterPct = Math.max(0, Math.min(100, (e.master / -30.0) * 100));
+      
+      const bassMeter = document.getElementById('bassMeter');
+      const masterMeter = document.getElementById('masterMeter');
+      if (bassMeter) bassMeter.style.height = bassPct + '%';
+      if (masterMeter) masterMeter.style.height = masterPct + '%';
+    });
+
+    // Preset management
+    callJuce("getPresets", []).then((presets) => {
+      if (!presets) return;
+      const select = document.getElementById('presetSelector');
+      select.innerHTML = '';
+      presets.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p;
+        opt.innerText = p;
+        select.appendChild(opt);
+      });
+      callJuce("getCurrentPreset", []).then((cur) => {
+        if (cur) select.value = cur;
+      });
+    });
+  }
+
+  function savePreset() {
+    if (isJuce) callJuce('setKeyboardFocus', [true]);
+    document.getElementById('presetNameInput').value = '';
+    document.getElementById('presetModal').style.display = 'flex';
+    document.getElementById('presetNameInput').focus();
+  }
+
+  function submitPresetSave() {
+    let name = document.getElementById('presetNameInput').value.trim();
+    if (name && isJuce) {
+      callJuce("savePreset", [name]).then(() => {
+        callJuce("getPresets", []).then((presets) => {
+          if (!presets) return;
+          const select = document.getElementById('presetSelector');
+          select.innerHTML = '';
+          presets.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p;
+            opt.innerText = p;
+            select.appendChild(opt);
+          });
+          select.value = name;
+        });
+      });
+    }
+    document.getElementById('presetModal').style.display = 'none';
+    if (isJuce) callJuce('setKeyboardFocus', [false]);
+  }
+
+  function loadPreset() {
+    const select = document.getElementById('presetSelector');
+    if (isJuce) {
+      callJuce("loadPreset", [select.value]);
+    }
+  }
+
+  // Prevent spacebar from triggering buttons or scrolling
+  window.addEventListener('keydown', (e) => {
+    if (e.code === 'Space') {
+      e.preventDefault();
+    }
+  });
+
+  function toggleButton(btn) {
+    btn.classList.toggle('active');
+    const id = btn.getAttribute('data-id');
+    emitJuceToggle(id, btn.classList.contains('active'));
+  }
+
+  // --------------------------------------------------------
+  // UI LOGIC
+  // --------------------------------------------------------
+  
+  function updateUIElement(el, normalizedVal, realValOverride) {
+    const isKnob = el.classList.contains('knob-container');
+    const isSlider = el.classList.contains('slider-track');
+    
+    let min = parseFloat(el.getAttribute('data-min') || '0');
+    let max = parseFloat(el.getAttribute('data-max') || '100');
+    let format = el.getAttribute('data-format') || '%';
+    
+    let realVal = realValOverride;
+    if (realVal === undefined) {
+      if (format === 'Hz') {
+        realVal = min * Math.pow(max/min, normalizedVal);
+      } else {
+        realVal = min + (normalizedVal * (max - min));
+      }
+    }
+    
+    // Update visual
+    if (isKnob) {
+      const degrees = -135 + (normalizedVal * 270);
+      el.querySelector('.knob').style.transform = `rotate(${degrees}deg)`;
+      const pct = normalizedVal * 270;
+      el.querySelector('.knob-arc').style.background = `conic-gradient(from 225deg, var(--primary) 0deg, var(--primary) ${pct}deg, transparent ${pct}deg)`;
+    } else if (isSlider) {
+      el.querySelector('.slider-cap').style.bottom = (normalizedVal * 100) + '%';
+    }
+    
+    // Update text
+    const valElem = el.parentElement.querySelector('.control-value');
+    if (valElem) {
+      if (format === 'dB') {
+        valElem.innerText = (realVal > 0 ? '+' : '') + realVal.toFixed(1) + ' dB';
+      } else if (format === 'Hz') {
+        valElem.innerText = Math.round(realVal) + ' Hz';
+      } else {
+        valElem.innerText = Math.round(realVal) + '%';
+      }
+    }
+    
+    return realVal;
+  }
+
+  // Init UI
+  document.querySelectorAll('.knob-container, .slider-track').forEach(el => {
+    updateUIElement(el, parseFloat(el.getAttribute('data-val')));
+  });
+
+  // Mouse Interaction
+  document.querySelectorAll('.knob-container, .slider-track').forEach(el => {
+    const isSlider = el.classList.contains('slider-track');
+    const cap = isSlider ? el.querySelector('.slider-cap') : el;
+    
+    cap.addEventListener('mousedown', (e) => {
+      e.preventDefault(); // Prevents text selection on drag
+      let startY = e.clientY;
+      let startVal = parseFloat(el.getAttribute('data-val'));
+      let id = el.getAttribute('data-id');
+      
+      if (isJuce) {
+        window.__JUCE__.backend.emitEvent("__juce__slider" + id, { eventType: "sliderDragStarted" });
+      }
+      
+      const trackHeight = isSlider ? el.clientHeight : 200; // knob sensitivity
+
+      function onMouseMove(e) {
+        let deltaY = startY - e.clientY;
+        let deltaPct = deltaY / trackHeight;
+        
+        let newVal = Math.max(0, Math.min(1, startVal + deltaPct));
+        el.setAttribute('data-val', newVal);
+        
+        let realVal = updateUIElement(el, newVal);
+        
+        emitJuceSlider(id, realVal);
+      }
+      
+      function onMouseUp() {
+        if (isJuce) {
+          window.__JUCE__.backend.emitEvent("__juce__slider" + id, { eventType: "sliderDragEnded" });
+        }
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+      }
+      
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    });
+  });
+
+</script>
+
+</body>
+</html>

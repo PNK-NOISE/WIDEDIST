@@ -29,6 +29,13 @@ TapeDistAudioProcessor::TapeDistAudioProcessor()
     peakReductionParam = apvts.getRawParameterValue("PEAK_REDUCTION");
     compGainParam = apvts.getRawParameterValue("COMP_GAIN");
     compOnParam = apvts.getRawParameterValue("COMP_ON");
+    finalSatParam = apvts.getRawParameterValue("FINAL_SAT");
+    masterMixParam = apvts.getRawParameterValue("MASTER_MIX");
+    bassOnParam = apvts.getRawParameterValue("BASS_ON");
+    masterSoftClipParam = apvts.getRawParameterValue("MASTER_SOFT_CLIP");
+    
+    presetManager = std::make_unique<PresetManager>(apvts);
+    presetManager->loadPreset("808-POWER");
 }
 
 TapeDistAudioProcessor::~TapeDistAudioProcessor()
@@ -167,6 +174,9 @@ void TapeDistAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
     auto totalNumInputChannels  = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
 
+    juce::AudioBuffer<float> dryBuffer;
+    dryBuffer.makeCopyOf(buffer);
+
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
 
@@ -230,27 +240,31 @@ void TapeDistAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
             float highR = hp2R.processSample(hp1R.processSample(rawR));
             
             // --- Bass FX Engine on lowMono ---
-            if (bassFxType == 1) // Compressor
+            bool bassOn = bassOnParam->load() > 0.5f;
+            if (bassOn)
             {
-                float thresholdDb = juce::jmap(bassAmount, 0.0f, 1.0f, 0.0f, -30.0f);
-                float makeup = juce::jmap(bassAmount, 0.0f, 1.0f, 1.0f, 4.0f); // Auto makeup
-                float peakDb = juce::Decibels::gainToDecibels(std::abs(lowMono), -100.0f);
-                float targetGrDb = 0.0f;
-                if (peakDb > thresholdDb) targetGrDb = (thresholdDb - peakDb) * 0.75f; // 4:1 ratio
-                
-                // Fast Attack (~2ms), Medium Release (~40ms)
-                float attCoef = std::exp(-1000.0f / (2.0f * currentSampleRate));
-                float relCoef = std::exp(-1000.0f / (40.0f * currentSampleRate));
-                
-                if (targetGrDb < bassCompEnvelope) bassCompEnvelope = targetGrDb + attCoef * (bassCompEnvelope - targetGrDb);
-                else bassCompEnvelope = targetGrDb + relCoef * (bassCompEnvelope - targetGrDb);
-                
-                lowMono *= juce::Decibels::decibelsToGain(bassCompEnvelope) * makeup;
-            }
-            else if (bassFxType == 2) // Soft Clip
-            {
-                float driveBass = 1.0f + bassAmount * 10.0f; // Up to 11x drive
-                lowMono = std::tanh(lowMono * driveBass) * (1.0f / std::sqrt(driveBass));
+                if (bassFxType == 1) // Compressor
+                {
+                    float thresholdDb = juce::jmap(bassAmount, 0.0f, 1.0f, 0.0f, -30.0f);
+                    float makeup = juce::jmap(bassAmount, 0.0f, 1.0f, 1.0f, 4.0f); // Auto makeup
+                    float peakDb = juce::Decibels::gainToDecibels(std::abs(lowMono), -100.0f);
+                    float targetGrDb = 0.0f;
+                    if (peakDb > thresholdDb) targetGrDb = (thresholdDb - peakDb) * 0.75f; // 4:1 ratio
+                    
+                    // Fast Attack (~2ms), Medium Release (~40ms)
+                    float attCoef = std::exp(-1000.0f / (2.0f * currentSampleRate));
+                    float relCoef = std::exp(-1000.0f / (40.0f * currentSampleRate));
+                    
+                    if (targetGrDb < bassCompEnvelope) bassCompEnvelope = targetGrDb + attCoef * (bassCompEnvelope - targetGrDb);
+                    else bassCompEnvelope = targetGrDb + relCoef * (bassCompEnvelope - targetGrDb);
+                    
+                    lowMono *= juce::Decibels::decibelsToGain(bassCompEnvelope) * makeup;
+                }
+                else if (bassFxType == 2) // Soft Clip
+                {
+                    float driveBass = 1.0f + bassAmount * 10.0f; // Up to 11x drive
+                    lowMono = std::tanh(lowMono * driveBass) * (1.0f / std::sqrt(driveBass));
+                }
             }
             
             lowMono *= bassGain;
@@ -392,8 +406,45 @@ void TapeDistAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
         currentMasterGR.store(0.0f);
     }
     
-    // --- STAGE 4: MASTER OUTPUT TRIM ---
-    buffer.applyGain(makeUp);
+    // --- STAGE 4: MASTER OUTPUT TRIM & SATURATION ---
+    float finalSat = finalSatParam->load() / 100.0f;
+    float glueDrive = 1.0f + (finalSat * 4.0f); // Up to 5x gain into the saturator
+    float compensation = 1.0f / std::sqrt(glueDrive); // Simple makeup for the saturation
+    
+    for (int channel = 0; channel < buffer.getNumChannels(); ++channel) {
+        float* channelData = buffer.getWritePointer(channel);
+        for (int sample = 0; sample < buffer.getNumSamples(); ++sample) {
+            float in = channelData[sample];
+            
+            if (finalSat > 0.01f) {
+                in = std::tanh(in * glueDrive) * compensation;
+            }
+            
+            channelData[sample] = in * makeUp;
+        }
+    }
+    
+    // --- STAGE 5: MASTER MIX ---
+    float masterMix = masterMixParam->load() / 100.0f;
+    if (masterMix < 1.0f) {
+        for (int channel = 0; channel < buffer.getNumChannels(); ++channel) {
+            auto* outData = buffer.getWritePointer(channel);
+            auto* dryData = dryBuffer.getReadPointer(channel);
+            for (int sample = 0; sample < buffer.getNumSamples(); ++sample) {
+                outData[sample] = (dryData[sample] * (1.0f - masterMix)) + (outData[sample] * masterMix);
+            }
+        }
+    }
+    
+    // --- STAGE 6: SAFETY SOFT CLIP ---
+    if (masterSoftClipParam->load() > 0.5f) {
+        for (int channel = 0; channel < buffer.getNumChannels(); ++channel) {
+            auto* outData = buffer.getWritePointer(channel);
+            for (int sample = 0; sample < buffer.getNumSamples(); ++sample) {
+                outData[sample] = std::tanh(outData[sample]);
+            }
+        }
+    }
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout TapeDistAudioProcessor::createParameterLayout()
@@ -418,6 +469,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout TapeDistAudioProcessor::crea
     params.push_back(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID("BASS_FX_TYPE", 1), "Bass FX Type", bassFxTypes, 0));
     params.push_back(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("BASS_AMOUNT", 1), "Bass Amount", juce::NormalisableRange<float>(0.0f, 100.0f, 1.0f), 0.0f));
     params.push_back(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("BASS_GAIN", 1), "Bass Gain (dB)", juce::NormalisableRange<float>(-24.0f, 24.0f, 0.1f), 0.0f));
+    params.push_back(std::make_unique<juce::AudioParameterBool>(juce::ParameterID("BASS_ON", 1), "Bass Comp On", true));
     
     params.push_back(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("WIDTH", 1), "Width (%)", juce::NormalisableRange<float>(0.0f, 200.0f, 1.0f), 150.0f));
     params.push_back(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("WIDE_GAIN", 1), "Wide Gain (dB)", juce::NormalisableRange<float>(-24.0f, 24.0f, 0.1f), 0.0f));
@@ -425,6 +477,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout TapeDistAudioProcessor::crea
     params.push_back(std::make_unique<juce::AudioParameterBool>(juce::ParameterID("COMP_ON", 1), "Compressor On", true));
     params.push_back(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("PEAK_REDUCTION", 1), "Peak Reduction", juce::NormalisableRange<float>(0.0f, 100.0f, 1.0f), 0.0f));
     params.push_back(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("COMP_GAIN", 1), "Comp Gain (dB)", juce::NormalisableRange<float>(0.0f, 24.0f, 0.1f), 0.0f));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("FINAL_SAT", 1), "Final Sat (%)", juce::NormalisableRange<float>(0.0f, 100.0f, 1.0f), 0.0f));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("MASTER_MIX", 1), "Master Mix (%)", juce::NormalisableRange<float>(0.0f, 100.0f, 1.0f), 100.0f));
+    params.push_back(std::make_unique<juce::AudioParameterBool>(juce::ParameterID("MASTER_SOFT_CLIP", 1), "Master Soft Clip", false));
     
     return { params.begin(), params.end() };
 }

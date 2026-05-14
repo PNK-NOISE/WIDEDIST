@@ -1,4 +1,7 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.24)
+
+set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "Build architectures for macOS" FORCE)
+
 project(TapeDist VERSION 1.0.0)
 
 # Build Universal Binary for macOS (Apple Silicon + Intel)
@@ -17,15 +20,17 @@ FetchContent_MakeAvailable(juce)
 
 # Create the plugin target
 juce_add_plugin(TapeDist
-    COMPANY_NAME "Olle"
+    PLUGIN_NAME "WIDEDIST"
+    COMPANY_NAME "PNK NOISE"
+    BUNDLE_ID "com.pnknoise.widedist"
     IS_SYNTH FALSE
     NEEDS_MIDI_INPUT FALSE
     NEEDS_MIDI_OUTPUT FALSE
     IS_MIDI_EFFECT FALSE
     EDITOR_WANTS_KEYBOARD_FOCUS FALSE
     COPY_PLUGIN_AFTER_BUILD TRUE
-    PLUGIN_MANUFACTURER_CODE Olle
-    PLUGIN_CODE Tdst
+    PLUGIN_MANUFACTURER_CODE PNKN
+    PLUGIN_CODE Wdst
     FORMATS Standalone VST3 AU
 )
 
@@ -35,11 +40,20 @@ target_sources(TapeDist
     PRIVATE
         Source/PluginProcessor.cpp
         Source/PluginEditor.cpp
+        Source/PresetManager.cpp
+)
+
+juce_add_binary_data(WebAssets
+    HEADER_NAME "WebAssets.h"
+    NAMESPACE WebAssets
+    SOURCES
+        Design/index.html
+        LOGGA.png
 )
 
 target_compile_definitions(TapeDist
     PUBLIC
-        JUCE_WEB_BROWSER=0
+        JUCE_WEB_BROWSER=1
         JUCE_USE_CURL=0
         JUCE_VST3_CAN_REPLACE_VST2=0
 )
@@ -49,6 +63,8 @@ target_link_libraries(TapeDist
     PRIVATE
         juce::juce_audio_utils
         juce::juce_dsp
+        juce::juce_gui_extra
+        WebAssets
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags
