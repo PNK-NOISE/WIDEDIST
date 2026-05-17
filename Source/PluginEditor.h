@@ -35,6 +35,9 @@ private:
     juce::WebSliderRelay bassAmountRelay { "bassAmount" };
     juce::WebSliderRelay bassGainRelay { "bassGain" };
     juce::WebToggleButtonRelay bassOnRelay { "bassOn" };
+    juce::WebToggleButtonRelay bassScOnRelay { "bassScOn" };
+    juce::WebSliderRelay bassScAmountRelay { "bassScAmount" };
+    juce::WebSliderRelay bassScReleaseRelay { "bassScRelease" };
     
     juce::WebSliderRelay peakReductionRelay { "peakReduction" };
     juce::WebSliderRelay compGainRelay { "compGain" };
@@ -61,6 +64,9 @@ private:
     juce::WebSliderParameterAttachment bassAmountAttachment;
     juce::WebSliderParameterAttachment bassGainAttachment;
     juce::WebToggleButtonParameterAttachment bassOnAttachment;
+    juce::WebToggleButtonParameterAttachment bassScOnAttachment;
+    juce::WebSliderParameterAttachment bassScAmountAttachment;
+    juce::WebSliderParameterAttachment bassScReleaseAttachment;
     
     juce::WebSliderParameterAttachment peakReductionAttachment;
     juce::WebSliderParameterAttachment compGainAttachment;

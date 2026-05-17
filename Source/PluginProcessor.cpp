@@ -37,6 +37,7 @@ TapeDistAudioProcessor::TapeDistAudioProcessor()
     bassOnParam = apvts.getRawParameterValue("BASS_ON");
     bassScOnParam = apvts.getRawParameterValue("BASS_SC_ON");
     bassScAmountParam = apvts.getRawParameterValue("BASS_SC_AMOUNT");
+    bassScReleaseParam = apvts.getRawParameterValue("BASS_SC_RELEASE");
     masterSoftClipParam = apvts.getRawParameterValue("MASTER_SOFT_CLIP");
     
     presetManager = std::make_unique<PresetManager>(apvts);
@@ -235,6 +236,7 @@ void TapeDistAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
         bool bassOn = bassOnParam->load() > 0.5f;
         float scAmount = bassScAmountParam->load() / 100.0f;
         bool scOn = bassScOnParam->load() > 0.5f;
+        float scRelease = bassScReleaseParam->load();
         float sidechainGR = 0.0f; // Track GR for the meter
 
         for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
@@ -302,8 +304,8 @@ void TapeDistAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
                     targetGrDb = (thresholdDb - scPeakDb) * scAmount * 1.5f; // Deep ducking ratio
                 }
                 
-                float attCoef = std::exp(-1000.0f / (1.0f * currentSampleRate)); // Very fast attack
-                float relCoef = std::exp(-1000.0f / (80.0f * currentSampleRate)); // Fast release
+                float attCoef = std::exp(-1000.0f / (0.1f * currentSampleRate)); // Near 0ms attack
+                float relCoef = std::exp(-1000.0f / (scRelease * currentSampleRate)); // Adjustable release
                 
                 if (targetGrDb < sidechainEnvelope) sidechainEnvelope = targetGrDb + attCoef * (sidechainEnvelope - targetGrDb);
                 else sidechainEnvelope = targetGrDb + relCoef * (sidechainEnvelope - targetGrDb);
@@ -524,6 +526,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout TapeDistAudioProcessor::crea
     params.push_back(std::make_unique<juce::AudioParameterBool>(juce::ParameterID("BASS_ON", 1), "Bass Comp On", true));
     params.push_back(std::make_unique<juce::AudioParameterBool>(juce::ParameterID("BASS_SC_ON", 1), "Bass Sidechain On", false));
     params.push_back(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("BASS_SC_AMOUNT", 1), "Bass SC Amount", juce::NormalisableRange<float>(0.0f, 100.0f, 1.0f), 0.0f));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("BASS_SC_RELEASE", 1), "Bass SC Release", juce::NormalisableRange<float>(10.0f, 500.0f, 1.0f), 80.0f));
     
     params.push_back(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("WIDTH", 1), "Width (%)", juce::NormalisableRange<float>(0.0f, 200.0f, 1.0f), 150.0f));
     params.push_back(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("WIDE_GAIN", 1), "Wide Gain (dB)", juce::NormalisableRange<float>(-24.0f, 24.0f, 0.1f), 0.0f));

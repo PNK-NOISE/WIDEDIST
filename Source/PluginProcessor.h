@@ -66,6 +66,7 @@ private:
     std::atomic<float>* bassOnParam = nullptr;
     std::atomic<float>* bassScOnParam = nullptr;
     std::atomic<float>* bassScAmountParam = nullptr;
+    std::atomic<float>* bassScReleaseParam = nullptr;
     
     // Stage 3: Compressor
     std::atomic<float>* peakReductionParam = nullptr;

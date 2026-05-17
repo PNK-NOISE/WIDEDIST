@@ -17,6 +17,9 @@ TapeDistAudioProcessorEditor::TapeDistAudioProcessorEditor (TapeDistAudioProcess
       bassAmountAttachment(*p.apvts.getParameter("BASS_AMOUNT"), bassAmountRelay, p.apvts.undoManager),
       bassGainAttachment(*p.apvts.getParameter("BASS_GAIN"), bassGainRelay, p.apvts.undoManager),
       bassOnAttachment(*p.apvts.getParameter("BASS_ON"), bassOnRelay, p.apvts.undoManager),
+      bassScOnAttachment(*p.apvts.getParameter("BASS_SC_ON"), bassScOnRelay, p.apvts.undoManager),
+      bassScAmountAttachment(*p.apvts.getParameter("BASS_SC_AMOUNT"), bassScAmountRelay, p.apvts.undoManager),
+      bassScReleaseAttachment(*p.apvts.getParameter("BASS_SC_RELEASE"), bassScReleaseRelay, p.apvts.undoManager),
       peakReductionAttachment(*p.apvts.getParameter("PEAK_REDUCTION"), peakReductionRelay, p.apvts.undoManager),
       compGainAttachment(*p.apvts.getParameter("COMP_GAIN"), compGainRelay, p.apvts.undoManager),
       finalSatAttachment(*p.apvts.getParameter("FINAL_SAT"), finalSatRelay, p.apvts.undoManager),
@@ -40,6 +43,9 @@ TapeDistAudioProcessorEditor::TapeDistAudioProcessorEditor (TapeDistAudioProcess
                  .withOptionsFrom(bassAmountRelay)
                  .withOptionsFrom(bassGainRelay)
                  .withOptionsFrom(bassOnRelay)
+                 .withOptionsFrom(bassScOnRelay)
+                 .withOptionsFrom(bassScAmountRelay)
+                 .withOptionsFrom(bassScReleaseRelay)
                  .withOptionsFrom(peakReductionRelay)
                  .withOptionsFrom(compGainRelay)
                  .withOptionsFrom(finalSatRelay)
