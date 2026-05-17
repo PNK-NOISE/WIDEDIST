@@ -527,7 +527,11 @@
     <div class="panel">
       <div class="panel-header">
         <div class="panel-title">Bass Comp</div>
-        <div class="btn active" data-id="bassOn" onclick="toggleButton(this)"><div class="btn-led"></div></div>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <div class="control-label" style="font-size: 9px; opacity: 0.8;">SC</div>
+          <div class="btn" data-id="bassScOn" onclick="toggleButton(this)" style="transform: scale(0.8); margin-right: 5px;"><div class="btn-led"></div></div>
+          <div class="btn active" data-id="bassOn" onclick="toggleButton(this)"><div class="btn-led"></div></div>
+        </div>
       </div>
       <div class="controls-grid">
         <div class="control-group" style="grid-column: span 2; height: 124px; justify-content: flex-start;">

@@ -11,6 +11,7 @@ TapeDistAudioProcessor::TapeDistAudioProcessor()
                        .withInput  ("Input",  juce::AudioChannelSet::stereo(), true)
                       #endif
                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
+                       .withInput  ("Sidechain", juce::AudioChannelSet::stereo(), false)
                      #endif
                        ), apvts (*this, nullptr, "Parameters", createParameterLayout())
 #endif
@@ -34,6 +35,7 @@ TapeDistAudioProcessor::TapeDistAudioProcessor()
     finalSatParam = apvts.getRawParameterValue("FINAL_SAT");
     masterMixParam = apvts.getRawParameterValue("MASTER_MIX");
     bassOnParam = apvts.getRawParameterValue("BASS_ON");
+    bassScOnParam = apvts.getRawParameterValue("BASS_SC_ON");
     masterSoftClipParam = apvts.getRawParameterValue("MASTER_SOFT_CLIP");
     
     presetManager = std::make_unique<PresetManager>(apvts);
@@ -249,7 +251,28 @@ void TapeDistAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
                 {
                     float thresholdDb = juce::jmap(bassAmount, 0.0f, 1.0f, 0.0f, -30.0f);
                     float makeup = juce::jmap(bassAmount, 0.0f, 1.0f, 1.0f, 4.0f); // Auto makeup
-                    float peakDb = juce::Decibels::gainToDecibels(std::abs(lowMono), -100.0f);
+                    
+                    float peakLevel = std::abs(lowMono);
+                    bool scOn = bassScOnParam->load() > 0.5f;
+                    
+                    // Retrieve sidechain signal if available and SC is ON
+                    if (scOn && getBusCount(true) > 1) {
+                        auto scBus = getBus(true, 1);
+                        if (scBus->isEnabled()) {
+                            int scStart = getChannelIndexInProcessBlockBuffer(true, 1, 0);
+                            int scChannels = scBus->getNumberOfChannels();
+                            if (scStart >= 0 && scStart + scChannels <= buffer.getNumChannels() && scChannels > 0) {
+                                float scPeak = 0.0f;
+                                for (int scCh = 0; scCh < scChannels; ++scCh) {
+                                    float absSc = std::abs(buffer.getSample(scStart + scCh, sample));
+                                    if (absSc > scPeak) scPeak = absSc;
+                                }
+                                peakLevel = scPeak;
+                            }
+                        }
+                    }
+                    
+                    float peakDb = juce::Decibels::gainToDecibels(peakLevel, -100.0f);
                     float targetGrDb = 0.0f;
                     if (peakDb > thresholdDb) targetGrDb = (thresholdDb - peakDb) * 0.75f; // 4:1 ratio
                     
@@ -472,6 +495,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout TapeDistAudioProcessor::crea
     params.push_back(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("BASS_AMOUNT", 1), "Bass Amount", juce::NormalisableRange<float>(0.0f, 100.0f, 1.0f), 0.0f));
     params.push_back(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("BASS_GAIN", 1), "Bass Gain (dB)", juce::NormalisableRange<float>(-24.0f, 24.0f, 0.1f), 0.0f));
     params.push_back(std::make_unique<juce::AudioParameterBool>(juce::ParameterID("BASS_ON", 1), "Bass Comp On", true));
+    params.push_back(std::make_unique<juce::AudioParameterBool>(juce::ParameterID("BASS_SC_ON", 1), "Bass Sidechain On", false));
     
     params.push_back(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("WIDTH", 1), "Width (%)", juce::NormalisableRange<float>(0.0f, 200.0f, 1.0f), 150.0f));
     params.push_back(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("WIDE_GAIN", 1), "Wide Gain (dB)", juce::NormalisableRange<float>(-24.0f, 24.0f, 0.1f), 0.0f));
