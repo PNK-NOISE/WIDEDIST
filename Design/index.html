@@ -527,15 +527,11 @@
     <div class="panel">
       <div class="panel-header">
         <div class="panel-title">Bass Comp</div>
-        <div style="display: flex; gap: 8px; align-items: center;">
-          <div class="control-label" style="font-size: 9px; opacity: 0.8;">SC</div>
-          <div class="btn" data-id="bassScOn" onclick="toggleButton(this)" style="transform: scale(0.8); margin-right: 5px;"><div class="btn-led"></div></div>
-          <div class="btn active" data-id="bassOn" onclick="toggleButton(this)"><div class="btn-led"></div></div>
-        </div>
+        <div class="btn active" data-id="bassOn" onclick="toggleButton(this)"><div class="btn-led"></div></div>
       </div>
       <div class="controls-grid">
-        <div class="control-group" style="grid-column: span 2; height: 124px; justify-content: flex-start;">
-          <select class="preset-selector" data-id="bassFxType" onchange="emitJuceComboBox('bassFxType', this.selectedIndex, 3)" style="width: 100%; margin-bottom: 5px;">
+        <div class="control-group" style="grid-column: span 2; margin-bottom: 5px;">
+          <select class="preset-selector" data-id="bassFxType" onchange="emitJuceComboBox('bassFxType', this.selectedIndex, 3)" style="width: 100%;">
             <option>Off</option>
             <option>Compressor</option>
             <option>Soft Clip</option>
@@ -557,9 +553,19 @@
           <div class="control-label">Bass Gain</div>
           <div class="control-value">0.0 dB</div>
         </div>
-        <div class="control-group" style="justify-content: center; grid-column: span 2;">
-           <div class="control-label" style="margin-bottom: 8px;">Gain Reduction</div>
-           <div class="meter"><div class="meter-fill" id="bassMeter" style="height: 0%;"></div></div>
+        <div class="control-group">
+          <div class="knob-container small" data-id="bassScAmount" data-val="0.0" data-format="%">
+            <div class="knob-arc"></div>
+            <div class="knob"><div class="knob-indicator"></div></div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <div class="btn" data-id="bassScOn" onclick="toggleButton(this)" style="transform: scale(0.7);"><div class="btn-led"></div></div>
+            <div class="control-label">SC DUCK</div>
+          </div>
+        </div>
+        <div class="control-group" style="justify-content: center;">
+           <div class="control-label" style="margin-bottom: 5px;">GR Meter</div>
+           <div class="meter" style="height: 60px;"><div class="meter-fill" id="bassMeter" style="height: 0%;"></div></div>
         </div>
       </div>
     </div>

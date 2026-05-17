@@ -65,6 +65,7 @@ private:
     std::atomic<float>* bassGainParam = nullptr;
     std::atomic<float>* bassOnParam = nullptr;
     std::atomic<float>* bassScOnParam = nullptr;
+    std::atomic<float>* bassScAmountParam = nullptr;
     
     // Stage 3: Compressor
     std::atomic<float>* peakReductionParam = nullptr;
@@ -89,6 +90,7 @@ private:
     
     // Compressor Envelopes
     float bassCompEnvelope = 0.0f;
+    float sidechainEnvelope = 0.0f;
     float compEnvelope = 0.0f;
     
     // Glitch State

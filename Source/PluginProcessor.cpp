@@ -36,6 +36,7 @@ TapeDistAudioProcessor::TapeDistAudioProcessor()
     masterMixParam = apvts.getRawParameterValue("MASTER_MIX");
     bassOnParam = apvts.getRawParameterValue("BASS_ON");
     bassScOnParam = apvts.getRawParameterValue("BASS_SC_ON");
+    bassScAmountParam = apvts.getRawParameterValue("BASS_SC_AMOUNT");
     masterSoftClipParam = apvts.getRawParameterValue("MASTER_SOFT_CLIP");
     
     presetManager = std::make_unique<PresetManager>(apvts);
@@ -225,11 +226,17 @@ void TapeDistAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
     hp1R.coefficients = hpCoefs; hp2R.coefficients = hpCoefs;
 
     // 1. Process Widener, Bass FX & Distortion
-    if (wideOn && buffer.getNumChannels() == 2)
+    if (wideOn && buffer.getNumChannels() >= 2)
     {
         auto* leftPtr = buffer.getWritePointer(0);
         auto* rightPtr = buffer.getWritePointer(1);
         
+        // --- Pre-calculate parameters ---
+        bool bassOn = bassOnParam->load() > 0.5f;
+        float scAmount = bassScAmountParam->load() / 100.0f;
+        bool scOn = bassScOnParam->load() > 0.5f;
+        float sidechainGR = 0.0f; // Track GR for the meter
+
         for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
         {
             float rawL = leftPtr[sample];
@@ -244,35 +251,13 @@ void TapeDistAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
             float highR = hp2R.processSample(hp1R.processSample(rawR));
             
             // --- Bass FX Engine on lowMono ---
-            bool bassOn = bassOnParam->load() > 0.5f;
             if (bassOn)
             {
                 if (bassFxType == 1) // Compressor
                 {
                     float thresholdDb = juce::jmap(bassAmount, 0.0f, 1.0f, 0.0f, -30.0f);
                     float makeup = juce::jmap(bassAmount, 0.0f, 1.0f, 1.0f, 4.0f); // Auto makeup
-                    
-                    float peakLevel = std::abs(lowMono);
-                    bool scOn = bassScOnParam->load() > 0.5f;
-                    
-                    // Retrieve sidechain signal if available and SC is ON
-                    if (scOn && getBusCount(true) > 1) {
-                        auto scBus = getBus(true, 1);
-                        if (scBus->isEnabled()) {
-                            int scStart = getChannelIndexInProcessBlockBuffer(true, 1, 0);
-                            int scChannels = scBus->getNumberOfChannels();
-                            if (scStart >= 0 && scStart + scChannels <= buffer.getNumChannels() && scChannels > 0) {
-                                float scPeak = 0.0f;
-                                for (int scCh = 0; scCh < scChannels; ++scCh) {
-                                    float absSc = std::abs(buffer.getSample(scStart + scCh, sample));
-                                    if (absSc > scPeak) scPeak = absSc;
-                                }
-                                peakLevel = scPeak;
-                            }
-                        }
-                    }
-                    
-                    float peakDb = juce::Decibels::gainToDecibels(peakLevel, -100.0f);
+                    float peakDb = juce::Decibels::gainToDecibels(std::abs(lowMono), -100.0f);
                     float targetGrDb = 0.0f;
                     if (peakDb > thresholdDb) targetGrDb = (thresholdDb - peakDb) * 0.75f; // 4:1 ratio
                     
@@ -290,6 +275,43 @@ void TapeDistAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
                     float driveBass = 1.0f + bassAmount * 10.0f; // Up to 11x drive
                     lowMono = std::tanh(lowMono * driveBass) * (1.0f / std::sqrt(driveBass));
                 }
+            }
+            
+            // --- Dedicated Sidechain Ducking ---
+            if (scOn && scAmount > 0.01f) {
+                float scPeak = 0.0f;
+                if (getBusCount(true) > 1) {
+                    auto scBus = getBus(true, 1);
+                    if (scBus->isEnabled()) {
+                        int scStart = getChannelIndexInProcessBlockBuffer(true, 1, 0);
+                        int scChannels = scBus->getNumberOfChannels();
+                        if (scStart >= 0 && scStart + scChannels <= buffer.getNumChannels() && scChannels > 0) {
+                            for (int scCh = 0; scCh < scChannels; ++scCh) {
+                                float absSc = std::abs(buffer.getSample(scStart + scCh, sample));
+                                if (absSc > scPeak) scPeak = absSc;
+                            }
+                        }
+                    }
+                }
+                
+                float scPeakDb = juce::Decibels::gainToDecibels(scPeak, -100.0f);
+                float thresholdDb = -40.0f;
+                float targetGrDb = 0.0f;
+                
+                if (scPeakDb > thresholdDb) {
+                    targetGrDb = (thresholdDb - scPeakDb) * scAmount * 1.5f; // Deep ducking ratio
+                }
+                
+                float attCoef = std::exp(-1000.0f / (1.0f * currentSampleRate)); // Very fast attack
+                float relCoef = std::exp(-1000.0f / (80.0f * currentSampleRate)); // Fast release
+                
+                if (targetGrDb < sidechainEnvelope) sidechainEnvelope = targetGrDb + attCoef * (sidechainEnvelope - targetGrDb);
+                else sidechainEnvelope = targetGrDb + relCoef * (sidechainEnvelope - targetGrDb);
+                
+                lowMono *= juce::Decibels::decibelsToGain(sidechainEnvelope);
+                sidechainGR = sidechainEnvelope;
+            } else {
+                sidechainEnvelope = 0.0f;
             }
             
             lowMono *= bassGain;
@@ -336,8 +358,13 @@ void TapeDistAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
             rightPtr[sample] = lowMono + highR - (syntheticSide * widthAmt * wideGain);
         }
         
-        if (bassFxType == 1) currentBassGR.store(bassCompEnvelope);
-        else currentBassGR.store(0.0f);
+        if (scOn) {
+            currentBassGR.store(sidechainGR); // Show ducking on the meter
+        } else if (bassFxType == 1 && bassOn) {
+            currentBassGR.store(bassCompEnvelope);
+        } else {
+            currentBassGR.store(0.0f);
+        }
     }
     else
     {
@@ -496,6 +523,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout TapeDistAudioProcessor::crea
     params.push_back(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("BASS_GAIN", 1), "Bass Gain (dB)", juce::NormalisableRange<float>(-24.0f, 24.0f, 0.1f), 0.0f));
     params.push_back(std::make_unique<juce::AudioParameterBool>(juce::ParameterID("BASS_ON", 1), "Bass Comp On", true));
     params.push_back(std::make_unique<juce::AudioParameterBool>(juce::ParameterID("BASS_SC_ON", 1), "Bass Sidechain On", false));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("BASS_SC_AMOUNT", 1), "Bass SC Amount", juce::NormalisableRange<float>(0.0f, 100.0f, 1.0f), 0.0f));
     
     params.push_back(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("WIDTH", 1), "Width (%)", juce::NormalisableRange<float>(0.0f, 200.0f, 1.0f), 150.0f));
     params.push_back(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("WIDE_GAIN", 1), "Wide Gain (dB)", juce::NormalisableRange<float>(-24.0f, 24.0f, 0.1f), 0.0f));
